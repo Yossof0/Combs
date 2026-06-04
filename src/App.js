@@ -12,9 +12,38 @@ import { batchCheckWords } from './utils/dictionary';
 
 const MAX_HISTORY = 5;
 
+const UI_TEXT = {
+  en: {
+    title: 'Combination Calculator',
+    subtitle: 'Enter letters · choose length · generate every possible arrangement',
+    step1: 'Add Letters',
+    step2: 'Configure',
+    step3: 'Generate',
+    generateBtn: 'Generate Combinations',
+    generating: 'Generating...',
+    emptyTitle: 'Results will appear here',
+    emptyHint: 'Add letters and click Generate',
+  },
+  ar: {
+    title: 'حاسبة التوليفات',
+    subtitle: 'أدخل الحروف · اختر الطول · ولّد كل ترتيب ممكن',
+    step1: 'أضف الحروف',
+    step2: 'الإعدادات',
+    step3: 'توليد',
+    generateBtn: 'توليد التوليفات',
+    generating: 'جارٍ التوليد...',
+    emptyTitle: 'النتائج ستظهر هنا',
+    emptyHint: 'أضف حروفاً واضغط توليد',
+  },
+};
+
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
-  const [language, setLanguage] = useState('en');
+
+  // Two separate language states
+  const [uiLang, setUiLang] = useState('en');       // controls UI text direction & labels
+  const [comboLang, setComboLang] = useState('en');  // controls letter input & dictionary
+
   const [letters, setLetters] = useState([]);
   const [letterCount, setLetterCount] = useState(1);
   const [uniqueOnly, setUniqueOnly] = useState(true);
@@ -27,6 +56,10 @@ export default function App() {
   const [error, setError] = useState('');
   const abortRef = useRef(false);
 
+  const t = UI_TEXT[uiLang];
+  const isRTL = uiLang === 'ar';
+  const isComboArabic = comboLang === 'ar';
+
   const handleLetterCountChange = (val) => {
     setLetterCount(Math.min(val, Math.max(1, letters.length)));
   };
@@ -36,8 +69,8 @@ export default function App() {
     setLetterCount(prev => Math.min(prev, Math.max(1, newLetters.length)));
   };
 
-  const handleLanguageChange = (lang) => {
-    setLanguage(lang);
+  const handleComboLangChange = (lang) => {
+    setComboLang(lang);
     setLetters([]);
     setResults([]);
     setRealWords(new Set());
@@ -46,13 +79,18 @@ export default function App() {
 
   const generate = useCallback(async () => {
     if (letters.length === 0) {
-      setError('Add at least one letter to generate combinations.');
+      setError(uiLang === 'ar' ? 'أضف حرفاً واحداً على الأقل.' : 'Add at least one letter.');
       return;
     }
     setError('');
     const r = Math.min(letterCount, letters.length) || 1;
     if (!isFeasible(letters.length, r)) {
-      setError('Too many combinations (' + countPermutations(letters.length, r).toLocaleString() + '). Reduce letters or letter count.');
+      const count = countPermutations(letters.length, r).toLocaleString();
+      setError(
+        uiLang === 'ar'
+          ? `عدد التوليفات كبير جداً (${count}). قلل الحروف أو الطول.`
+          : `Too many combinations (${count}). Reduce letters or length.`
+      );
       return;
     }
 
@@ -70,95 +108,87 @@ export default function App() {
       setIsGenerating(false);
 
       setHistory(prev => [
-        { letters: [...letters], letterCount: r, resultCount: perms.length, language },
+        { letters: [...letters], letterCount: r, resultCount: perms.length, comboLang },
         ...prev.slice(0, MAX_HISTORY - 1)
       ]);
 
       if (checkWords && perms.length > 0) {
         setWordCheckProgress({ done: 0, total: Math.min(perms.length, 200) });
-        const found = await batchCheckWords(
-          perms,
-          language,
-          200,
-          (done, total) => {
-            if (!abortRef.current) setWordCheckProgress({ done, total });
-          }
-        );
+        const found = await batchCheckWords(perms, comboLang, 200, (done, total) => {
+          if (!abortRef.current) setWordCheckProgress({ done, total });
+        });
         if (!abortRef.current) {
           setRealWords(found);
           setWordCheckProgress(null);
         }
       }
     } catch (e) {
-      setError('Something went wrong generating combinations.');
+      setError('Something went wrong. Please try again.');
       setIsGenerating(false);
     }
-  }, [letters, letterCount, checkWords, language]);
+  }, [letters, letterCount, checkWords, comboLang, uiLang]);
 
   const restoreHistory = (entry) => {
     setLetters(entry.letters);
     setLetterCount(entry.letterCount);
-    setLanguage(entry.language || 'en');
+    setComboLang(entry.comboLang || 'en');
     setResults([]);
     setRealWords(new Set());
   };
 
-  const clearHistory = () => setHistory([]);
-
-  const isArabic = language === 'ar';
-  const canGenerate = letters.length > 0 && !isGenerating && isFeasible(letters.length, Math.min(letterCount, letters.length));
+  const canGenerate = letters.length > 0 && !isGenerating
+    && isFeasible(letters.length, Math.min(letterCount, letters.length));
 
   return (
     <div
       className="min-h-screen flex flex-col grid-noise"
       style={{ background: 'var(--bg)' }}
-      dir={isArabic ? 'rtl' : 'ltr'}
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       <Header
         theme={theme}
         onToggleTheme={toggleTheme}
-        language={language}
-        onLanguageChange={handleLanguageChange}
+        uiLang={uiLang}
+        onUiLangChange={setUiLang}
+        comboLang={comboLang}
+        onComboLangChange={handleComboLangChange}
       />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 space-y-4">
-        <div className="text-center py-4">
-          <h2 className="font-display font-black text-3xl md:text-4xl mb-2" style={{ color: 'var(--text)' }}>
-            {isArabic ? 'حاسبة التوليفات' : 'Word Combination'}
-            <span className="text-transparent bg-clip-text"
-              style={{ backgroundImage: 'linear-gradient(135deg, var(--brand), #7c3aed)' }}>
-              {' '}Calculator
-            </span>
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 space-y-5">
+
+        {/* Clean minimal title */}
+        <div className="pt-4 pb-2">
+          <h2
+            className="font-display font-bold text-2xl md:text-3xl tracking-tight"
+            style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}
+          >
+            {t.title}
           </h2>
-          <p className="text-sm font-mono" style={{ color: 'var(--text-muted)' }}>
-            {isArabic
-              ? 'أدخل الحروف وشاهد كل التوليفات الممكنة'
-              : 'Enter letters · choose length · generate every possible arrangement'}
+          <p className="text-xs font-mono mt-1" style={{ color: 'var(--text-muted)' }}>
+            {t.subtitle}
           </p>
         </div>
 
+        {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* Left column */}
           <div className="lg:col-span-1 space-y-4">
+
+            {/* Step 1 — Letters */}
             <div className="rounded-xl p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <h3 className="font-display font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text)' }}>
-                <span className="w-5 h-5 rounded-md flex items-center justify-center text-white text-xs"
-                  style={{ background: 'var(--brand)' }}>1</span>
-                {isArabic ? 'أضف الحروف' : 'Add Letters'}
-              </h3>
+              <StepLabel num="1" label={t.step1} />
               <LetterInput
                 letters={letters}
                 onChange={handleLettersChange}
-                language={language}
+                language={comboLang}
                 maxLetters={12}
               />
             </div>
 
+            {/* Step 2 — Settings */}
             <div>
-              <h3 className="font-display font-semibold text-sm mb-3 flex items-center gap-2 px-1" style={{ color: 'var(--text)' }}>
-                <span className="w-5 h-5 rounded-md flex items-center justify-center text-white text-xs"
-                  style={{ background: 'var(--brand)' }}>2</span>
-                {isArabic ? 'الإعدادات' : 'Configure'}
-              </h3>
+              <StepLabel num="2" label={t.step2} padded />
               <SettingsPanel
                 letters={letters}
                 letterCount={Math.min(letterCount, Math.max(1, letters.length))}
@@ -167,44 +197,40 @@ export default function App() {
                 onUniqueOnlyChange={setUniqueOnly}
                 checkWords={checkWords}
                 onCheckWordsChange={setCheckWords}
-                language={language}
+                language={comboLang}
+                uiLang={uiLang}
               />
             </div>
 
+            {/* Step 3 — Generate */}
             <div>
-              <h3 className="font-display font-semibold text-sm mb-3 flex items-center gap-2 px-1" style={{ color: 'var(--text)' }}>
-                <span className="w-5 h-5 rounded-md flex items-center justify-center text-white text-xs"
-                  style={{ background: 'var(--brand)' }}>3</span>
-                {isArabic ? 'توليد' : 'Generate'}
-              </h3>
+              <StepLabel num="3" label={t.step3} padded />
               {error && (
                 <div className="mb-3 px-3 py-2 rounded-lg text-xs font-mono"
-                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
                   {error}
                 </div>
               )}
               <button
                 onClick={generate}
                 disabled={!canGenerate}
-                className="w-full py-3 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full py-3 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: canGenerate
-                    ? 'linear-gradient(135deg, var(--brand), #7c3aed)'
-                    : 'var(--surface2)',
+                  background: canGenerate ? 'linear-gradient(135deg, #0ea5e9, #7c3aed)' : 'var(--surface2)',
                   color: canGenerate ? '#fff' : 'var(--text-muted)',
                   border: 'none',
-                  boxShadow: canGenerate ? '0 4px 20px rgba(14,165,233,0.3)' : 'none',
+                  boxShadow: canGenerate ? '0 4px 18px rgba(14,165,233,0.25)' : 'none',
                 }}
               >
                 {isGenerating ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Generating...
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t.generating}
                   </>
                 ) : (
                   <>
-                    <Zap size={15} />
-                    {isArabic ? 'توليد التوليفات' : 'Generate Combinations'}
+                    <Zap size={14} />
+                    {t.generateBtn}
                   </>
                 )}
               </button>
@@ -213,20 +239,24 @@ export default function App() {
             <HistoryPanel
               history={history}
               onRestore={restoreHistory}
-              onClear={clearHistory}
+              onClear={() => setHistory([])}
+              uiLang={uiLang}
             />
           </div>
 
+          {/* Right column — results */}
           <div className="lg:col-span-2">
             {results.length === 0 && !isGenerating ? (
-              <div className="rounded-xl flex flex-col items-center justify-center py-20 text-center"
-                style={{ border: '1px dashed var(--border)', background: 'var(--surface)' }}>
-                <div className="text-4xl mb-3">🔡</div>
-                <p className="font-display font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                  {isArabic ? 'النتائج ستظهر هنا' : 'Results will appear here'}
+              <div
+                className="rounded-xl flex flex-col items-center justify-center py-20 text-center"
+                style={{ border: '1px dashed var(--border)', background: 'var(--surface)' }}
+              >
+                <div className="text-3xl mb-3 opacity-40">⌨</div>
+                <p className="font-display font-medium text-sm" style={{ color: 'var(--text)' }}>
+                  {t.emptyTitle}
                 </p>
                 <p className="text-xs font-mono mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {isArabic ? 'أضف حروفاً واضغط توليد' : 'Add letters and click Generate'}
+                  {t.emptyHint}
                 </p>
               </div>
             ) : (
@@ -235,7 +265,8 @@ export default function App() {
                 realWords={realWords}
                 isLoading={isGenerating}
                 wordCheckProgress={wordCheckProgress}
-                language={language}
+                language={comboLang}
+                uiLang={uiLang}
               />
             )}
           </div>
@@ -243,6 +274,22 @@ export default function App() {
       </main>
 
       <Footer />
+    </div>
+  );
+}
+
+function StepLabel({ num, label, padded }) {
+  return (
+    <div className={`flex items-center gap-2 mb-3 ${padded ? 'px-1' : ''}`}>
+      <span
+        className="w-5 h-5 rounded-md flex items-center justify-center text-white text-xs font-display font-bold flex-shrink-0"
+        style={{ background: 'var(--brand)' }}
+      >
+        {num}
+      </span>
+      <span className="font-display font-semibold text-sm" style={{ color: 'var(--text)' }}>
+        {label}
+      </span>
     </div>
   );
 }

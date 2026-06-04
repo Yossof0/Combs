@@ -1,6 +1,6 @@
 import { Clock, ChevronRight, Trash2 } from 'lucide-react';
 
-export default function HistoryPanel({ history, onRestore, onClear }) {
+export default function HistoryPanel({ history, onRestore, onClear, uiLang = 'en' }) {
   if (!history.length) return null;
 
   return (
@@ -9,7 +9,7 @@ export default function HistoryPanel({ history, onRestore, onClear }) {
         <div className="flex items-center gap-2">
           <Clock size={13} style={{ color: 'var(--brand)' }} />
           <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--text)' }}>
-            History
+            {uiLang === 'ar' ? 'السجل' : 'History'}
           </h3>
         </div>
         <button

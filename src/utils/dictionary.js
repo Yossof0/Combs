@@ -1,14 +1,9 @@
-// Cache to avoid redundant API calls
 const cache = new Map();
 
-/**
- * Check if a word exists in the English dictionary using Free Dictionary API
- */
 export async function checkEnglishWord(word) {
   if (word.length < 2) return false;
   const key = `en:${word.toLowerCase()}`;
   if (cache.has(key)) return cache.get(key);
-
   try {
     const res = await fetch(
       `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`
@@ -22,23 +17,32 @@ export async function checkEnglishWord(word) {
 }
 
 /**
- * Check Arabic word using Arabic Ontology / Wiktionary approach
- * Falls back to a simple heuristic if API unavailable
+ * Stricter Arabic word check:
+ * 1. Minimum 3 letters
+ * 2. Uses Arabic Wiktionary directly (ar.wiktionary.org) — more accurate than en.wiktionary for Arabic
+ * 3. Checks that the page is actually an Arabic language entry
  */
 export async function checkArabicWord(word) {
-  if (word.length < 2) return false;
+  if (!word || word.length < 3) return false;
+  // Must consist entirely of Arabic script characters (no latin, no numbers)
+  if (!/^[\u0600-\u06FF\u0750-\u077F]+$/.test(word)) return false;
+
   const key = `ar:${word}`;
   if (cache.has(key)) return cache.get(key);
 
   try {
-    // Using Wiktionary's API which supports Arabic
-    const url = `https://en.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(word)}&format=json&origin=*`;
+    // Arabic Wiktionary API — much stricter and Arabic-native
+    const url = `https://ar.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(word)}&prop=categories&format=json&origin=*`;
     const res = await fetch(url);
     const data = await res.json();
     const pages = data?.query?.pages;
-    const firstPage = pages && Object.values(pages)[0];
-    // If page exists and doesn't have "missing" flag, it's a real word
-    const isReal = firstPage && !firstPage.missing;
+    const page = pages && Object.values(pages)[0];
+
+    // Page must exist (no "missing" flag) AND have categories (stub pages with no content have no cats)
+    const exists = page && !page.missing;
+    const hasCategories = exists && page.categories && page.categories.length > 0;
+
+    const isReal = hasCategories;
     cache.set(key, isReal);
     return isReal;
   } catch {
@@ -46,10 +50,6 @@ export async function checkArabicWord(word) {
   }
 }
 
-/**
- * Batch check words for a given language, returns a Set of real words
- * Limits to first `limit` words to avoid rate limiting
- */
 export async function batchCheckWords(words, language, limit = 200, onProgress) {
   const realWords = new Set();
   const toCheck = words.slice(0, limit);
@@ -63,8 +63,7 @@ export async function batchCheckWords(words, language, limit = 200, onProgress) 
       if (results[idx]) realWords.add(w);
     });
     if (onProgress) onProgress(Math.min(i + batchSize, toCheck.length), toCheck.length);
-    // Small delay to be nice to the API
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 120));
   }
 
   return realWords;
