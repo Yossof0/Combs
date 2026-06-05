@@ -1,26 +1,37 @@
-import { Sliders, CheckSquare, BookOpen, AlertTriangle } from 'lucide-react';
+import { Sliders, CheckSquare, BookOpen, AlertTriangle, Languages, Star } from 'lucide-react';
 import { countPermutations } from '../utils/permutations';
+
+const COMBO_LANGUAGES = [
+  { code: 'en', label: '🇬🇧 English' },
+  { code: 'ar', label: '🇸🇦 Arabic / عربي' },
+];
 
 const LABELS = {
   en: {
     title: 'Settings',
+    comboLang: 'Combination language',
     perCombo: 'Letters per combination',
     uniqueLabel: 'Unique combinations only',
-    uniqueDesc: 'Remove duplicate letter-set results',
+    uniqueDesc: 'Remove duplicate results',
     dictLabel: 'Highlight real words',
+    realOnlyLabel: 'Show real words only',
+    realOnlyDesc: 'Filter out non-dictionary results',
     tooLarge: 'Too large to generate',
     maySlow: 'May be slow',
-    checking: (lang) => `Check ${lang === 'ar' ? 'Arabic' : 'English'} dictionary (first 200)`,
+    dictDesc: (lang) => `Check ${lang === 'ar' ? 'Arabic' : 'English'} dictionary (first 200)`,
   },
   ar: {
     title: 'الإعدادات',
+    comboLang: 'لغة التوليفات',
     perCombo: 'عدد الحروف في كل توليفة',
     uniqueLabel: 'توليفات فريدة فقط',
     uniqueDesc: 'إزالة التكرارات',
     dictLabel: 'تمييز الكلمات الحقيقية',
+    realOnlyLabel: 'الكلمات الحقيقية فقط',
+    realOnlyDesc: 'إخفاء غير الموجودة في القاموس',
     tooLarge: 'عدد كبير جداً',
     maySlow: 'قد يكون بطيئاً',
-    checking: (lang) => `فحص قاموس ${lang === 'ar' ? 'العربية' : 'الإنجليزية'} (أول 200)`,
+    dictDesc: (lang) => `فحص قاموس ${lang === 'ar' ? 'العربية' : 'الإنجليزية'} (أول 200)`,
   },
 };
 
@@ -28,11 +39,12 @@ export default function SettingsPanel({
   letters, letterCount, onLetterCountChange,
   uniqueOnly, onUniqueOnlyChange,
   checkWords, onCheckWordsChange,
-  language, uiLang = 'en',
+  realOnly, onRealOnlyChange,
+  comboLang, onComboLangChange,
+  uiLang = 'en',
 }) {
   const n = letters.length;
-  const r = letterCount;
-  const total = countPermutations(n, r);
+  const total = countPermutations(n, letterCount);
   const isBig = total > 100000;
   const isHuge = total > 500000;
   const T = LABELS[uiLang] || LABELS.en;
@@ -54,7 +66,35 @@ export default function SettingsPanel({
         </h3>
       </div>
 
-      {/* Slider */}
+      {/* Combination language dropdown */}
+      <div>
+        <label className="block text-xs font-display mb-1.5" style={{ color: 'var(--text-muted)' }}>
+          {T.comboLang}
+        </label>
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg"
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
+        >
+          <Languages size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+          <select
+            value={comboLang}
+            onChange={e => onComboLangChange(e.target.value)}
+            className="flex-1 bg-transparent border-none outline-none text-xs font-mono cursor-pointer"
+            style={{ color: 'var(--text)' }}
+          >
+            {COMBO_LANGUAGES.map(o => (
+              <option key={o.code} value={o.code} style={{ background: 'var(--surface)' }}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div style={{ borderTop: '1px solid var(--border)' }} />
+
+      {/* Letter count slider */}
       <div>
         <div className="flex justify-between items-center mb-2">
           <label className="text-xs font-display" style={{ color: 'var(--text-muted)' }}>
@@ -105,38 +145,49 @@ export default function SettingsPanel({
         />
         <Toggle
           label={T.dictLabel}
-          desc={T.checking(language)}
+          desc={T.dictDesc(comboLang)}
           icon={<BookOpen size={12} />}
           checked={checkWords}
           onChange={onCheckWordsChange}
+        />
+        {/* Real only — only relevant when word checking is on */}
+        <Toggle
+          label={T.realOnlyLabel}
+          desc={T.realOnlyDesc}
+          icon={<Star size={12} />}
+          checked={realOnly}
+          onChange={onRealOnlyChange}
+          disabled={!checkWords}
         />
       </div>
     </div>
   );
 }
 
-function Toggle({ label, desc, icon, checked, onChange }) {
+function Toggle({ label, desc, icon, checked, onChange, disabled = false }) {
   return (
     <button
-      onClick={() => onChange(!checked)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all hover:opacity-80 text-left"
+      onClick={() => !disabled && onChange(!checked)}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
       style={{
-        background: checked ? 'rgba(14,165,233,0.07)' : 'var(--surface2)',
-        border: `1px solid ${checked ? 'rgba(14,165,233,0.25)' : 'var(--border)'}`,
+        background: checked && !disabled ? 'rgba(14,165,233,0.07)' : 'var(--surface2)',
+        border: `1px solid ${checked && !disabled ? 'rgba(14,165,233,0.25)' : 'var(--border)'}`,
       }}
     >
-      <div style={{ color: checked ? 'var(--brand)' : 'var(--text-muted)', flexShrink: 0 }}>{icon}</div>
-      <div className="flex-1 min-w-0 text-left">
+      <div style={{ color: checked && !disabled ? 'var(--brand)' : 'var(--text-muted)', flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
         <p className="text-xs font-display font-medium truncate" style={{ color: 'var(--text)' }}>{label}</p>
         <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>{desc}</p>
       </div>
       <div
         className="w-8 h-4 rounded-full relative flex-shrink-0 transition-all"
-        style={{ background: checked ? 'var(--brand)' : 'var(--border)' }}
+        style={{ background: checked && !disabled ? 'var(--brand)' : 'var(--border)' }}
       >
         <div
           className="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all"
-          style={{ left: checked ? '17px' : '2px' }}
+          style={{ left: checked && !disabled ? '17px' : '2px' }}
         />
       </div>
     </button>

@@ -1,40 +1,11 @@
-import { Sun, Moon, Globe, Languages } from 'lucide-react';
+import { Sun, Moon, Globe } from 'lucide-react';
 
 const UI_LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
   { code: 'ar', label: 'العربية', flag: '🇸🇦' },
 ];
 
-const COMBO_LANGUAGES = [
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'ar', label: 'Arabic / عربي', flag: '🇸🇦' },
-];
-
-function Dropdown({ icon, value, options, onChange, title }) {
-  return (
-    <div
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm cursor-pointer transition-all hover:opacity-80"
-      style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-      title={title}
-    >
-      <span style={{ color: 'var(--brand)', display: 'flex', alignItems: 'center' }}>{icon}</span>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="bg-transparent border-none outline-none cursor-pointer text-xs font-mono"
-        style={{ color: 'var(--text)' }}
-      >
-        {options.map(o => (
-          <option key={o.code} value={o.code} style={{ background: 'var(--surface)' }}>
-            {o.flag} {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-export default function Header({ theme, onToggleTheme, uiLang, onUiLangChange, comboLang, onComboLangChange }) {
+export default function Header({ theme, onToggleTheme, uiLang, onUiLangChange }) {
   return (
     <header
       className="relative z-10 flex items-center justify-between px-5 py-3 border-b"
@@ -55,24 +26,32 @@ export default function Header({ theme, onToggleTheme, uiLang, onUiLangChange, c
 
       {/* Controls */}
       <div className="flex items-center gap-2">
-        <Dropdown
-          icon={<Globe size={12} />}
-          value={uiLang}
-          options={UI_LANGUAGES}
-          onChange={onUiLangChange}
+        {/* Site language */}
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm cursor-pointer transition-all hover:opacity-80"
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
           title="Site language"
-        />
-        <Dropdown
-          icon={<Languages size={12} />}
-          value={comboLang}
-          options={COMBO_LANGUAGES}
-          onChange={onComboLangChange}
-          title="Combination language"
-        />
+        >
+          <Globe size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+          <select
+            value={uiLang}
+            onChange={e => onUiLangChange(e.target.value)}
+            className="bg-transparent border-none outline-none cursor-pointer text-xs font-mono"
+            style={{ color: 'var(--text)' }}
+          >
+            {UI_LANGUAGES.map(o => (
+              <option key={o.code} value={o.code} style={{ background: 'var(--surface)' }}>
+                {o.flag} {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Theme toggle */}
         <button
           onClick={onToggleTheme}
           className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
           title="Toggle theme"
         >
           {theme === 'dark'

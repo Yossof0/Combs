@@ -39,15 +39,15 @@ const UI_TEXT = {
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
-
-  // Two separate language states
-  const [uiLang, setUiLang] = useState('en');       // controls UI text direction & labels
-  const [comboLang, setComboLang] = useState('en');  // controls letter input & dictionary
+  const [uiLang, setUiLang] = useState('en');
+  const [comboLang, setComboLang] = useState('en');
 
   const [letters, setLetters] = useState([]);
   const [letterCount, setLetterCount] = useState(1);
   const [uniqueOnly, setUniqueOnly] = useState(true);
   const [checkWords, setCheckWords] = useState(false);
+  const [realOnly, setRealOnly] = useState(false);
+
   const [results, setResults] = useState([]);
   const [realWords, setRealWords] = useState(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -56,9 +56,8 @@ export default function App() {
   const [error, setError] = useState('');
   const abortRef = useRef(false);
 
-  const t = UI_TEXT[uiLang];
+  const t = UI_TEXT[uiLang] || UI_TEXT.en;
   const isRTL = uiLang === 'ar';
-  const isComboArabic = comboLang === 'ar';
 
   const handleLetterCountChange = (val) => {
     setLetterCount(Math.min(val, Math.max(1, letters.length)));
@@ -75,6 +74,12 @@ export default function App() {
     setResults([]);
     setRealWords(new Set());
     setError('');
+  };
+
+  // Turn off realOnly automatically if checkWords is disabled
+  const handleCheckWordsChange = (val) => {
+    setCheckWords(val);
+    if (!val) setRealOnly(false);
   };
 
   const generate = useCallback(async () => {
@@ -150,13 +155,10 @@ export default function App() {
         onToggleTheme={toggleTheme}
         uiLang={uiLang}
         onUiLangChange={setUiLang}
-        comboLang={comboLang}
-        onComboLangChange={handleComboLangChange}
       />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 space-y-5">
-
-        {/* Clean minimal title */}
+        {/* Title */}
         <div className="pt-4 pb-2">
           <h2
             className="font-display font-bold text-2xl md:text-3xl tracking-tight"
@@ -169,13 +171,11 @@ export default function App() {
           </p>
         </div>
 
-        {/* Main grid */}
+        {/* Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
           {/* Left column */}
           <div className="lg:col-span-1 space-y-4">
-
-            {/* Step 1 — Letters */}
+            {/* Step 1 */}
             <div className="rounded-xl p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <StepLabel num="1" label={t.step1} />
               <LetterInput
@@ -186,7 +186,7 @@ export default function App() {
               />
             </div>
 
-            {/* Step 2 — Settings */}
+            {/* Step 2 */}
             <div>
               <StepLabel num="2" label={t.step2} padded />
               <SettingsPanel
@@ -196,13 +196,16 @@ export default function App() {
                 uniqueOnly={uniqueOnly}
                 onUniqueOnlyChange={setUniqueOnly}
                 checkWords={checkWords}
-                onCheckWordsChange={setCheckWords}
-                language={comboLang}
+                onCheckWordsChange={handleCheckWordsChange}
+                realOnly={realOnly}
+                onRealOnlyChange={setRealOnly}
+                comboLang={comboLang}
+                onComboLangChange={handleComboLangChange}
                 uiLang={uiLang}
               />
             </div>
 
-            {/* Step 3 — Generate */}
+            {/* Step 3 */}
             <div>
               <StepLabel num="3" label={t.step3} padded />
               {error && (
@@ -244,7 +247,7 @@ export default function App() {
             />
           </div>
 
-          {/* Right column — results */}
+          {/* Right column */}
           <div className="lg:col-span-2">
             {results.length === 0 && !isGenerating ? (
               <div
@@ -263,6 +266,7 @@ export default function App() {
               <ResultsPanel
                 results={results}
                 realWords={realWords}
+                realOnly={realOnly}
                 isLoading={isGenerating}
                 wordCheckProgress={wordCheckProgress}
                 language={comboLang}

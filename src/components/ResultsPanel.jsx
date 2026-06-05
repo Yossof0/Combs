@@ -12,17 +12,16 @@ const SORT_OPTIONS = [
   { value: 'real-first', label: 'Real words first' },
 ];
 
-export default function ResultsPanel({ results, realWords, isLoading, wordCheckProgress, language }) {
+export default function ResultsPanel({ results, realWords, realOnly = false, isLoading, wordCheckProgress, language, uiLang = 'en' }) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('default');
   const [page, setPage] = useState(1);
   const [copied, setCopied] = useState(false);
-  const [showRealOnly, setShowRealOnly] = useState(false);
   const isArabic = language === 'ar';
 
   const filtered = useMemo(() => {
     let r = results;
-    if (showRealOnly) r = r.filter(w => realWords.has(w));
+    if (realOnly) r = r.filter(w => realWords.has(w));
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       r = r.filter(w => w.toLowerCase().includes(q));
@@ -39,11 +38,10 @@ export default function ResultsPanel({ results, realWords, isLoading, wordCheckP
       });
       default: return r;
     }
-  }, [results, search, sort, showRealOnly, realWords]);
+  }, [results, search, sort, realOnly, realWords]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const realCount = realWords.size;
 
   const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
   const handleSort = (e) => { setSort(e.target.value); setPage(1); };
@@ -74,19 +72,18 @@ export default function ResultsPanel({ results, realWords, isLoading, wordCheckP
             <span className="font-bold" style={{ color: 'var(--brand)' }}>{filtered.length.toLocaleString()}</span>
             <span style={{ color: 'var(--text-muted)' }}>/{results.length.toLocaleString()} results</span>
           </div>
-          {realCount > 0 && (
-            <button
-              onClick={() => { setShowRealOnly(!showRealOnly); setPage(1); }}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-display transition-all"
+          {realWords.size > 0 && (
+            <span
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-display"
               style={{
-                background: showRealOnly ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.08)',
+                background: 'rgba(34,197,94,0.08)',
                 border: '1px solid rgba(34,197,94,0.3)',
                 color: '#22c55e'
               }}
             >
               <BookOpen size={10} />
-              {realCount} real words {showRealOnly ? '(showing)' : ''}
-            </button>
+              {realWords.size} real words
+            </span>
           )}
         </div>
 
