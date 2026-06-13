@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Combs/static/css/main.1b701ab6.css",
+    "main.js": "/Combs/static/js/main.522c7c7b.js",
+    "index.html": "/Combs/index.html",
+    "main.1b701ab6.css.map": "/Combs/static/css/main.1b701ab6.css.map",
+    "main.522c7c7b.js.map": "/Combs/static/js/main.522c7c7b.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1b701ab6.css",
+    "static/js/main.522c7c7b.js"
+  ]
+}
