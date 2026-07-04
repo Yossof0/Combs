@@ -4,10 +4,8 @@ export function encodeStateToUrl({ letters, letterCount, comboLang, uniqueOnly }
   if (letterCount) params.set('r', letterCount);
   if (comboLang) params.set('lang', comboLang);
   if (uniqueOnly !== undefined) params.set('u', uniqueOnly ? '1' : '0');
-  const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-  return url;
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
-
 export function decodeStateFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const lettersRaw = params.get('l');
